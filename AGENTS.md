@@ -101,3 +101,20 @@ Omnitask Local — это приватное приложение для упр�
 - Система локальных напоминаний.
 - Логика сортировки и фильтрации.
 - Финальное тестирование синхронизации через Syncthing.
+
+## 7. Сборка релиза (Windows)
+
+Для создания установочного файла (portable zip) на Windows:
+
+1. **Сборка приложения:**
+   ```bash
+   cd app
+   flutter build windows --release
+   ```
+2. **Упаковка:**
+   Содержимое папки `build\windows\x64\runner\Release` упаковывается в ZIP-архив.
+   ```powershell
+   Compress-Archive -Path 'build\windows\x64\runner\Release\*' -DestinationPath 'omnitask-windows-x64.zip' -Force
+   ```
+3. **Результат:**
+   Файл `app/omnitask-windows-x64.zip` готов к распространению. Пользователю достаточно распаковать архив и запустить `omnitask_local.exe`.

@@ -21,10 +21,14 @@ class BoardSwitcherDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.watch<AppController>();
-    return SimpleDialog(
+    return AlertDialog(
       title: const Text('Доски'),
-      contentPadding: const EdgeInsets.only(top: 8),
-      children: [
+      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      actionsPadding: const EdgeInsets.all(8),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
         for (final b in c.boards)
           ListTile(
             leading: Container(
@@ -99,7 +103,8 @@ class BoardSwitcherDialog extends StatelessWidget {
             );
           },
         ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -168,60 +173,62 @@ class _BoardFormDialogState extends State<_BoardFormDialog> {
     return AlertDialog(
       title:
           Text(widget.board == null ? 'Новая доска' : 'Изменить доску'),
-      content: SizedBox(
-        width: 380,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _name,
-              decoration: const InputDecoration(
-                  labelText: 'Название',
-                  border: OutlineInputBorder(),
-                  isDense: true),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _description,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                  labelText: 'Описание',
-                  border: OutlineInputBorder(),
-                  isDense: true),
-            ),
-            const SizedBox(height: 12),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('ЦВЕТ',
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted)),
-            ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final color in kBoardPalette)
-                  InkWell(
-                    onTap: () => setState(() => _color = color),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: hexToColor(color),
-                        shape: BoxShape.circle,
-                        border: _color == color
-                            ? Border.all(color: Colors.black, width: 2.5)
-                            : null,
+      content: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _name,
+                decoration: const InputDecoration(
+                    labelText: 'Название',
+                    border: OutlineInputBorder(),
+                    isDense: true),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _description,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                    labelText: 'Описание',
+                    border: OutlineInputBorder(),
+                    isDense: true),
+              ),
+              const SizedBox(height: 12),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('ЦВЕТ',
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted)),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final color in kBoardPalette)
+                    InkWell(
+                      onTap: () => setState(() => _color = color),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: hexToColor(color),
+                          shape: BoxShape.circle,
+                          border: _color == color
+                              ? Border.all(color: Colors.black, width: 2.5)
+                              : null,
+                        ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -263,10 +270,14 @@ class ListsManagerDialog extends StatelessWidget {
     final c = context.watch<AppController>();
     final lists = [...c.lists]..sort((a, b) => a.position.compareTo(b.position));
 
-    return SimpleDialog(
+    return AlertDialog(
       title: const Text('Списки'),
-      contentPadding: const EdgeInsets.only(top: 8),
-      children: [
+      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      actionsPadding: const EdgeInsets.all(8),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
         for (final l in lists)
           ListTile(
             leading: Container(
@@ -330,7 +341,8 @@ class ListsManagerDialog extends StatelessWidget {
             builder: (ctx) => const _ListFormDialog(),
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -402,63 +414,65 @@ class _ListFormDialogState extends State<_ListFormDialog> {
     return AlertDialog(
       title:
           Text(widget.list == null ? 'Новый список' : 'Изменить список'),
-      content: SizedBox(
-        width: 380,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _name,
-              decoration: const InputDecoration(
-                  labelText: 'Название',
-                  border: OutlineInputBorder(),
-                  isDense: true),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _kind,
-              isDense: true,
-              decoration: const InputDecoration(
-                  labelText: 'Свойство', border: OutlineInputBorder()),
-              items: [
-                for (final e in _kinds.entries)
-                  DropdownMenuItem(value: e.key, child: Text(e.value)),
-              ],
-              onChanged: (v) => setState(() => _kind = v ?? 'todo'),
-            ),
-            const SizedBox(height: 12),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('ЦВЕТ',
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted)),
-            ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final color in kPalette)
-                  InkWell(
-                    onTap: () => setState(() => _color = color),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: hexToColor(color),
-                        shape: BoxShape.circle,
-                        border: _color == color
-                            ? Border.all(color: Colors.black, width: 2.5)
-                            : null,
+      content: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _name,
+                decoration: const InputDecoration(
+                    labelText: 'Название',
+                    border: OutlineInputBorder(),
+                    isDense: true),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _kind,
+                isDense: true,
+                decoration: const InputDecoration(
+                    labelText: 'Свойство', border: OutlineInputBorder()),
+                items: [
+                  for (final e in _kinds.entries)
+                    DropdownMenuItem(value: e.key, child: Text(e.value)),
+                ],
+                onChanged: (v) => setState(() => _kind = v ?? 'todo'),
+              ),
+              const SizedBox(height: 12),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('ЦВЕТ',
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted)),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final color in kPalette)
+                    InkWell(
+                      onTap: () => setState(() => _color = color),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: hexToColor(color),
+                          shape: BoxShape.circle,
+                          border: _color == color
+                              ? Border.all(color: Colors.black, width: 2.5)
+                              : null,
+                        ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -521,10 +535,14 @@ class _CurrencyManagerDialogState extends State<CurrencyManagerDialog> {
       _reload();
     }
 
-    return SimpleDialog(
+    return AlertDialog(
       title: const Text('Валюты'),
-      contentPadding: const EdgeInsets.only(top: 8),
-      children: [
+      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      actionsPadding: const EdgeInsets.all(8),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
         if (currencies.isNotEmpty)
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -594,7 +612,8 @@ class _CurrencyManagerDialogState extends State<CurrencyManagerDialog> {
                 _CurrencyFormDialog(onSaved: _reload),
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -638,69 +657,71 @@ class _CurrencyFormDialogState extends State<_CurrencyFormDialog> {
     return AlertDialog(
       title: Text(
           widget.currency == null ? 'Новая валюта' : 'Изменить валюту'),
-      content: SizedBox(
-        width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                SizedBox(
-                  width: 90,
-                  child: TextField(
-                    controller: _code,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                        labelText: 'Код',
-                        border: OutlineInputBorder(),
-                        isDense: true),
+      content: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  SizedBox(
+                    width: 90,
+                    child: TextField(
+                      controller: _code,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: const InputDecoration(
+                          labelText: 'Код',
+                          border: OutlineInputBorder(),
+                          isDense: true),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _name,
-                    decoration: const InputDecoration(
-                        labelText: 'Название',
-                        border: OutlineInputBorder(),
-                        isDense: true),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _name,
+                      decoration: const InputDecoration(
+                          labelText: 'Название',
+                          border: OutlineInputBorder(),
+                          isDense: true),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                SizedBox(
-                  width: 90,
-                  child: TextField(
-                    controller: _symbol,
-                    decoration: const InputDecoration(
-                        labelText: 'Символ',
-                        border: OutlineInputBorder(),
-                        isDense: true),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 90,
+                    child: TextField(
+                      controller: _symbol,
+                      decoration: const InputDecoration(
+                          labelText: 'Символ',
+                          border: OutlineInputBorder(),
+                          isDense: true),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _rate,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                        labelText: 'Курс к USD (1 ед. = ? USD)',
-                        border: OutlineInputBorder(),
-                        isDense: true),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _rate,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                          labelText: 'Курс к USD (1 ед. = ? USD)',
+                          border: OutlineInputBorder(),
+                          isDense: true),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Курс — стоимость 1 единицы валюты в USD. '
-              'Например, 0.011 для RUB: 10 000 ₽ ≈ 110 \$.',
-              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-            ),
-          ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Курс — стоимость 1 единицы валюты в USD. '
+                'Например, 0.011 для RUB: 10 000 ₽ ≈ 110 \$.',
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -745,90 +766,97 @@ class SettingsDialog extends StatelessWidget {
     final c = context.watch<AppController>();
     return AlertDialog(
       title: const Text('Настройки'),
-      content: SizedBox(
-        width: 440,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('ХРАНИЛИЩЕ',
+      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      content: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'ХРАНИЛИЩЕ',
                 style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textMuted)),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.folder, size: 18, color: AppColors.header),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      c.vault.vaultPath,
-                      style: const TextStyle(fontSize: 12),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.folder, size: 18, color: AppColors.header),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        c.vault.vaultPath,
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ),
-                  ),
-                  if (onChangeVault != null)
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 16),
-                      tooltip: 'Сменить папку хранилища',
-                      onPressed: () async {
-                        final path = await _pickVault(context);
-                        if (path != null) {
-                          await onChangeVault!(path);
-                          if (context.mounted) Navigator.pop(context);
-                        }
-                      },
-                    ),
-                ],
+                    if (onChangeVault != null)
+                      IconButton(
+                        icon: const Icon(Icons.edit, size: 16),
+                        tooltip: 'Сменить папку хранилища',
+                        onPressed: () async {
+                          final path = await _pickVault(context);
+                          if (path != null) {
+                            await onChangeVault!(path);
+                            if (context.mounted) Navigator.pop(context);
+                          }
+                        },
+                      ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Уведомления о дедлайнах'),
-              subtitle: const Text(
-                'Напоминать о задачах с дедлайном в течение 24 часов '
-                'и о просроченных',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Уведомления о дедлайнах'),
+                subtitle: const Text(
+                  'Напоминать о задачах с дедлайном в течение 24 часов '
+                  'и о просроченных',
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                ),
+                value: c.notificationsEnabled,
+                onChanged: (v) => c.setNotificationsEnabled(v),
               ),
-              value: c.notificationsEnabled,
-              onChanged: (v) => c.setNotificationsEnabled(v),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                border: Border.all(color: const Color(0xFFFDE68A)),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('⚠️ Нет облачного восстановления',
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '⚠️ Нет облачного восстановления',
                       style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
-                          color: Color(0xFF92400E))),
-                  SizedBox(height: 4),
-                  Text(
-                    'Omnitask Local — local-first приложение. Все данные '
-                    'лежат в файле tasks.db в выбранной папке. Делайте '
-                    'резервные копии и/или синхронизируйте папку через '
-                    'Syncthing. Потерянные данные восстановить негде.',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF92400E)),
-                  ),
-                ],
+                          color: Color(0xFF92400E)),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Omnitask Local — local-first приложение. Все данные '
+                      'лежат в файле tasks.db в выбранной папке. Делайте '
+                      'резервные копии и/или синхронизируйте папку через '
+                      'Syncthing. Потерянные данные восстановить негде.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF92400E)),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [

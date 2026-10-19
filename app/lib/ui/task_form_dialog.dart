@@ -89,10 +89,16 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.of(context).size.width >= 680;
-    return Dialog(
-      child: ConstrainedBox(
+    return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      actionsPadding: const EdgeInsets.all(8),
+      contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      titlePadding: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      content: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: wide ? 760 : 500,
+          maxWidth: wide ? 760 : double.infinity,
           maxHeight: MediaQuery.of(context).size.height * 0.92,
         ),
         child: Column(

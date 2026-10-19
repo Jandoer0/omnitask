@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import '../app_controller.dart';
 import '../models.dart';
+import '../vault.dart';
 import 'budget_dialog.dart';
 import 'dialogs.dart';
 import 'task_card.dart';
@@ -64,6 +65,19 @@ class HomeScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
+            tooltip: 'Бюджет',
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (ctx) => const BudgetDialog(),
+            ),
+            icon: const Icon(Icons.account_balance_wallet),
+          ),
+          IconButton(
+            tooltip: 'График',
+            onPressed: () => showModalBottomSheet(context: context, builder: (ctx) => const _BudgetChartDialog()),
+            icon: const Icon(Icons.bar_chart),
+          ),
+          IconButton(
             tooltip: 'Списки',
             onPressed: () => showDialog<void>(
               context: context,
@@ -103,13 +117,6 @@ class HomeScreen extends StatelessWidget {
               }
             },
             itemBuilder: (ctx) => [
-              const PopupMenuItem(
-                  value: 'budget',
-                  child: Row(children: [
-                    Icon(Icons.account_balance_wallet),
-                    SizedBox(width: 8),
-                    Text('Бюджет'),
-                  ])),
               const PopupMenuItem(
                   value: 'currencies',
                   child: Row(children: [
@@ -215,6 +222,8 @@ class _BoardBody extends StatelessWidget {
               ],
             ),
           ),
+        // Виджет графика бюджета.
+        _BudgetChartWidget(),
         // Облако тегов.
         if (c.tags.isNotEmpty)
           Padding(
@@ -377,16 +386,256 @@ class _GroupsViewState extends State<_GroupsView> {
                           ),
                         ),
                       )
-                    : Column(
+                    : Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           for (final t in items)
-                            TaskCard(task: t, controller: c),
+                            SizedBox(
+                              width: 240,
+                              child: TaskCard(task: t, controller: c),
+                            ),
                         ],
                       ),
               ),
           ],
         );
       },
+    );
+  }
+}
+
+/// Виджет графика бюджета (столбчатый график доход/расход).
+class _BudgetChartWidget extends StatelessWidget {
+  const _BudgetChartWidget();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.watch<AppController>();
+    if (c.activeBoardId == null) return const SizedBox.shrink();
+
+    BudgetReport b;
+    try {
+      b = c.budget;
+    } on TaskError {
+      return const SizedBox.shrink();
+    }
+
+    final incomeAbs = b.income.abs();
+    final expenseAbs = b.expense.abs();
+    final sum = incomeAbs + expenseAbs;
+    final max = [incomeAbs, expenseAbs].reduce((a, b) => a > b ? a : b);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: GestureDetector(
+        onTap: () => showModalBottomSheet(
+          context: context,
+          builder: (ctx) => const _BudgetChartDialog(),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('График бюджета',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textMuted)),
+                  Text('${b.reportCurrencyCode ?? ''}',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.slate400)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (sum > 0 && max > 0) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _Bar(
+                      label: 'Доход',
+                      value: incomeAbs,
+                      max: max,
+                      color: AppColors.green,
+                    ),
+                    _Bar(
+                      label: 'Расход',
+                      value: expenseAbs,
+                      max: max,
+                      color: AppColors.red,
+                    ),
+                  ],
+                ),
+              ] else
+                const Text('Нет данных для графика',
+                    style: TextStyle(fontSize: 11, color: AppColors.slate400)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Bar extends StatelessWidget {
+  final String label;
+  final num value;
+  final num max;
+  final Color color;
+
+  const _Bar({
+    required this.label,
+    required this.value,
+    required this.max,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final height = max > 0 ? (value / max * 100).toDouble() : 0.0;
+    return Column(
+      children: [
+        SizedBox(
+          width: 48,
+          child: Text(
+            value > 0 ? fmtMoney(value) : '0',
+            style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        Container(
+          width: 40,
+          height: 80,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: FractionallySizedBox(
+            heightFactor: height.clamp(0.02, 1.0),
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(4),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
+class _BudgetChartDialog extends StatelessWidget {
+  const _BudgetChartDialog();
+
+  void _showBudgetChart(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => const _BudgetChartDialog(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.watch<AppController>();
+    BudgetReport b;
+    try {
+      b = c.budget;
+    } on TaskError {
+      return AlertDialog(
+        title: const Text('График бюджета'),
+        content: const Text('Нет данных для отрисовки графика.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Закрыть')),
+        ],
+      );
+    }
+
+    final incomeAbs = b.income.abs();
+    final expenseAbs = b.expense.abs();
+    final max = [incomeAbs, expenseAbs].reduce((a, b) => a > b ? a : b);
+
+    return AlertDialog(
+      title: const Text('График бюджета'),
+      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      content: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _Bar(
+                          label: 'Доход',
+                          value: incomeAbs,
+                          max: max,
+                          color: AppColors.green,
+                        ),
+                        _Bar(
+                          label: 'Расход',
+                          value: expenseAbs,
+                          max: max,
+                          color: AppColors.red,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Максимум: 100% — относительно наибольшей категории',
+                      style: TextStyle(fontSize: 10, color: AppColors.slate400),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть')),
+        FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (ctx) => const BudgetDialog(),
+              );
+            },
+            child: const Text('К деталям')),
+      ],
     );
   }
 }

@@ -121,7 +121,7 @@ class _TaskCardState extends State<TaskCard> {
                 child: Opacity(
                   opacity: faded ? 0.6 : 1,
                   child: Container(
-                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 240),
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -137,16 +137,17 @@ class _TaskCardState extends State<TaskCard> {
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildTitleRow(task),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         _buildDateRow(task),
                         if (task.tags.isNotEmpty || blockers.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           _buildTagsAndBlockers(task, blockers),
                         ],
                         if (task.isCyclic) ...[
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           _buildCycleControls(task, doneListName),
                         ],
                       ],
