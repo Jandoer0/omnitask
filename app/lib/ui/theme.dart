@@ -80,7 +80,7 @@ ThemeData buildAppTheme() {
     ).copyWith(surface: Colors.white),
   );
   return base.copyWith(
-    dialogTheme: const DialogTheme(
+    dialogTheme: const DialogThemeData(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
     ),

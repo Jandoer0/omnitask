@@ -70,7 +70,8 @@ class Vault {
         name TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT '',
         color TEXT NOT NULL DEFAULT '#0ea5e9',
-        position INTEGER NOT NULL DEFAULT 0
+        position INTEGER NOT NULL DEFAULT 0,
+        report_currency_id INTEGER REFERENCES currencies(id) ON DELETE SET NULL
       );
       CREATE TABLE IF NOT EXISTS task_lists (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,6 +149,14 @@ class Vault {
         value TEXT
       );
     ''');
+    // Миграция старых БД: колонка валюты расчёта бюджета доски.
+    final cols = _db.select('PRAGMA table_info(boards)');
+    if (!cols.any((r) => r['name'] == 'report_currency_id')) {
+      _db.execute(
+        'ALTER TABLE boards ADD COLUMN report_currency_id '
+        'INTEGER REFERENCES currencies(id) ON DELETE SET NULL',
+      );
+    }
   }
 
   void _seed() {
@@ -217,7 +226,7 @@ class Vault {
     return rows.isEmpty ? null : VaultBoard.fromMap(rows.first);
   }
 
-  void updateBoard(int id, {String? name, String? description, String? color, int? position}) {
+  void updateBoard(int id, {String? name, String? description, String? color, int? position, bool clearReportCurrency = false, int? reportCurrencyId}) {
     if (name != null) {
       _db.execute('UPDATE boards SET name = ? WHERE id = ?', [name, id]);
     }
@@ -230,6 +239,13 @@ class Vault {
     }
     if (position != null) {
       _db.execute('UPDATE boards SET position = ? WHERE id = ?', [position, id]);
+    }
+    if (clearReportCurrency) {
+      _db.execute(
+          'UPDATE boards SET report_currency_id = NULL WHERE id = ?', [id]);
+    } else if (reportCurrencyId != null) {
+      _db.execute('UPDATE boards SET report_currency_id = ? WHERE id = ?',
+          [reportCurrencyId, id]);
     }
   }
 
@@ -808,10 +824,42 @@ class Vault {
 
   // ---------------- Валюты ----------------
 
+  /// Максимум валют (как в справочном проекте).
+  static const int maxCurrencies = 50;
+
+  /// Валидация курса: положительное конечное число, не больше 1e9.
+  static double? parseRate(double? value) {
+    if (value == null) return null;
+    if (!value.isFinite || value <= 0) {
+      throw TaskError('Курс должен быть числом больше нуля');
+    }
+    if (value > 1e9) {
+      throw TaskError('Слишком большой курс (максимум 1e9)');
+    }
+    return value;
+  }
+
   List<VaultCurrency> listCurrencies() => _db
       .select('SELECT * FROM currencies ORDER BY position, id')
       .map((r) => VaultCurrency.fromMap(r))
       .toList();
+
+  /// Валюта по умолчанию — первая в порядке отображения.
+  VaultCurrency? defaultCurrency() {
+    final rows = _db.select(
+        'SELECT * FROM currencies ORDER BY position, id LIMIT 1');
+    return rows.isEmpty ? null : VaultCurrency.fromMap(rows.first);
+  }
+
+  /// {currency_id: курс} по всем валютам.
+  Map<int, double> ratesMap() {
+    final map = <int, double>{};
+    for (final r in _db.select('SELECT id, rate FROM currencies')) {
+      final rate = (r['rate'] as num?)?.toDouble();
+      if (rate != null) map[r['id'] as int] = rate;
+    }
+    return map;
+  }
 
   VaultCurrency? getCurrency(int? id) {
     if (id == null) return null;
@@ -827,6 +875,11 @@ class Vault {
     if (_db.select('SELECT 1 FROM currencies WHERE code = ?', [code]).isNotEmpty) {
       throw TaskError('Валюта с кодом $code уже существует');
     }
+    if (_db.select('SELECT COUNT(*) c FROM currencies').first['c'] as int >=
+        maxCurrencies) {
+      throw TaskError('Максимальное количество валют — $maxCurrencies');
+    }
+    rate = parseRate(rate);
     final pos = (_db.select('SELECT COALESCE(MAX(position), -1) + 1 p FROM currencies')
             .first['p'] as int?) ??
         0;
@@ -845,12 +898,17 @@ class Vault {
       _db.execute('UPDATE currencies SET symbol = ? WHERE id = ?', [symbol, id]);
     }
     if (rate != null) {
-      _db.execute('UPDATE currencies SET rate = ? WHERE id = ?', [rate, id]);
+      _db.execute('UPDATE currencies SET rate = ? WHERE id = ?',
+          [parseRate(rate), id]);
     }
   }
 
   void deleteCurrency(int id) {
     _db.execute('UPDATE tasks SET currency_id = NULL WHERE currency_id = ?', [id]);
+    // Валюта расчёта досок, ссылавшихся на неё, сбрасывается в дефолтную.
+    _db.execute(
+        'UPDATE boards SET report_currency_id = NULL WHERE report_currency_id = ?',
+        [id]);
     _db.execute('DELETE FROM currencies WHERE id = ?', [id]);
     // Уплотняем позиции.
     final rows = _db.select('SELECT id FROM currencies ORDER BY position, id');
@@ -858,6 +916,111 @@ class Vault {
       _db.execute('UPDATE currencies SET position = ? WHERE id = ?',
           [i, rows.first['id']]);
     }
+  }
+
+  /// Сохранить полный порядок валют (позиции 0..n-1).
+  /// Чужие/неизвестные id молча пропускаются; пропущенные валюты
+  /// сохраняют относительный порядок после перечисленных.
+  void reorderCurrencies(List<int> orderedIds) {
+    final byId = {for (final c in listCurrencies()) c.id!: c};
+    var pos = 0;
+    for (final cid in orderedIds) {
+      final cur = byId.remove(cid);
+      if (cur != null && cur.position != pos) {
+        _db.execute('UPDATE currencies SET position = ? WHERE id = ?', [pos, cid]);
+      }
+      pos++;
+    }
+    for (final cur in byId.values) {
+      if (cur.position != pos) {
+        _db.execute('UPDATE currencies SET position = ? WHERE id = ?',
+            [pos, cur.id]);
+      }
+      pos++;
+    }
+  }
+
+  // ---------------- Бюджет ----------------
+
+  /// Округление до копеек вверх от половины (как ROUND_HALF_UP в Decimal).
+  static double _quantize(double v) => (v * 100).roundToDouble() / 100;
+
+  /// Бюджет доски (порт board_budget справочного проекта):
+  ///
+  /// ПЛАН = все суммы − ФАКТ; ФАКТ = суммы задач в списках со свойством
+  /// done; ИТОГО = все суммы доски; отдельно доходы/расходы. Сумма 0 не
+  /// участвует. Все итоги — в валюте расчёта доски (report_currency_id,
+  /// по умолчанию первая валюта). Конвертация по курсам к USD;
+  /// missingRate = true, когда у валюты не указан курс.
+  BudgetReport boardBudget(int boardId) {
+    final board = getBoard(boardId);
+    if (board == null) throw TaskError('Доска не найдена');
+
+    final doneNames = listLists(boardId)
+        .where((l) => l.kind == 'done')
+        .map((l) => l.name)
+        .toSet();
+    final rows = _db.select(
+        'SELECT * FROM tasks WHERE board_id = ? AND amount != 0', [boardId]);
+
+    final currencies = listCurrencies();
+    final rates = ratesMap();
+    final defaultCur = currencies.isEmpty ? null : currencies.first;
+    final targetId = board.reportCurrencyId ?? defaultCur?.id;
+    final targetRate = targetId == null ? null : rates[targetId];
+    var missingRate = targetId == null || targetRate == null;
+
+    final entries = <BudgetEntry>[];
+    for (final r in rows) {
+      final t = VaultTask.fromMap(r);
+      double? srcRate;
+      if (t.currencyId != null) {
+        srcRate = rates[t.currencyId];
+        if (srcRate == null) missingRate = true;
+      } else {
+        // Задача без валюты считается заданной в валюте по умолчанию.
+        srcRate = defaultCur == null ? 1.0 : rates[defaultCur.id];
+        if (defaultCur != null && srcRate == null) missingRate = true;
+      }
+      double? converted;
+      if (srcRate != null && targetRate != null) {
+        converted = _quantize(t.amount * srcRate / targetRate);
+      } else {
+        missingRate = true;
+      }
+      entries.add(BudgetEntry(
+        taskId: t.id!,
+        title: t.title,
+        list: t.listName,
+        amount: t.amount,
+        currencyId: t.currencyId,
+        currencyCode: getCurrency(t.currencyId)?.code,
+        converted: converted,
+      ));
+    }
+
+    double sumOf(Iterable<BudgetEntry> es) => _quantize(es.fold<double>(
+        0, (acc, e) => acc + (e.converted ?? 0)));
+
+    final total = sumOf(entries);
+    final fact = sumOf(entries.where((e) => doneNames.contains(e.list)));
+    final income = sumOf(entries.where((e) => e.amount > 0));
+    final expense = sumOf(entries.where((e) => e.amount < 0));
+    final target = getCurrency(targetId);
+
+    return BudgetReport(
+      boardId: boardId,
+      reportCurrencyId: targetId,
+      reportCurrencyCode: target?.code,
+      reportCurrencySymbol: target?.symbol,
+      missingRate: missingRate,
+      plan: _quantize(total - fact),
+      fact: fact,
+      total: total,
+      income: income,
+      expense: expense,
+      entries: entries,
+    );
   }
 
   // ---------------- Настройки ----------------

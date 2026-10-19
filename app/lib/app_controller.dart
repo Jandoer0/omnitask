@@ -256,6 +256,26 @@ class AppController extends ChangeNotifier {
 
   List<VaultCurrency> get currencies => _vault.listCurrencies();
 
+  /// Бюджет активной доски (пересчитывается на лету).
+  BudgetReport get budget => _vault.boardBudget(activeBoardId!);
+
+  /// Смена валюты расчёта бюджета доски (null — валюта по умолчанию).
+  void setReportCurrency(int? currencyId) {
+    final id = activeBoardId;
+    if (id == null) return;
+    _vault.updateBoard(id,
+        clearReportCurrency: currencyId == null,
+        reportCurrencyId: currencyId);
+    boards = _vault.listBoards();
+    notifyListeners();
+  }
+
+  /// Сохранить порядок валют (влияет на валюту по умолчанию).
+  void reorderCurrencies(List<int> orderedIds) {
+    _vault.reorderCurrencies(orderedIds);
+    notifyListeners();
+  }
+
   // ---------------- Настройки ----------------
 
   void setNotificationsEnabled(bool value) {

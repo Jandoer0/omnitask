@@ -11,12 +11,17 @@ class VaultBoard {
   String color; // hex, BOARD_PALETTE
   int position;
 
+  /// Валюта расчёта бюджета доски; null — валюта по умолчанию
+  /// (первая в порядке списка валют).
+  int? reportCurrencyId;
+
   VaultBoard({
     this.id,
     required this.name,
     this.description = '',
     this.color = '#0ea5e9',
     this.position = 0,
+    this.reportCurrencyId,
   });
 
   Map<String, Object?> toMap() => {
@@ -25,6 +30,7 @@ class VaultBoard {
         'description': description,
         'color': color,
         'position': position,
+        'report_currency_id': reportCurrencyId,
       };
 
   static VaultBoard fromMap(Map<String, Object?> m) => VaultBoard(
@@ -33,6 +39,7 @@ class VaultBoard {
         description: (m['description'] ?? '') as String,
         color: (m['color'] ?? '#0ea5e9') as String,
         position: (m['position'] ?? 0) as int,
+        reportCurrencyId: m['report_currency_id'] as int?,
       );
 }
 
@@ -305,5 +312,68 @@ class Summary {
     required this.done,
     required this.overdue,
     required this.planned,
+  });
+}
+
+/// Запись бюджета: одна задача с ненулевой суммой.
+///
+/// `amount` — исходная сумма в валюте задачи; `converted` — эквивалент
+/// в валюте расчёта доски (null — курс не указан).
+class BudgetEntry {
+  final int taskId;
+  final String title;
+  final String list;
+  final double amount;
+  final int? currencyId;
+  final String? currencyCode;
+  final double? converted;
+
+  const BudgetEntry({
+    required this.taskId,
+    required this.title,
+    required this.list,
+    required this.amount,
+    this.currencyId,
+    this.currencyCode,
+    this.converted,
+  });
+
+  /// Задача в списке со свойством «done» (входит в ФАКТ).
+  bool isDoneIn(Set<String> doneNames) => doneNames.contains(list);
+}
+
+/// Бюджет доски: итоги в валюте расчёта + записи (порт board_budget).
+///
+/// ПЛАН = все суммы − ФАКТ; ФАКТ = суммы в списках со свойством done;
+/// ИТОГО = все суммы доски. Сумма 0 в записи не участвует.
+class BudgetReport {
+  final int boardId;
+  final int? reportCurrencyId;
+  final String? reportCurrencyCode;
+  final String? reportCurrencySymbol;
+
+  /// Есть валюта(ы) без курса — итоги неполные (UI показывает warning).
+  final bool missingRate;
+
+  final double plan;
+  final double fact;
+  final double total;
+  final double income;
+  final double expense;
+
+  final List<BudgetEntry> entries;
+
+  const BudgetReport({
+    required this.boardId,
+    this.reportCurrencyId,
+    this.reportCurrencyCode,
+    this.reportCurrencySymbol,
+    required this.missingRate,
+    required this.plan,
+    required this.fact,
+    required this.total,
+    required this.income,
+    required this.expense,
+    required this.entries,
   });
 }

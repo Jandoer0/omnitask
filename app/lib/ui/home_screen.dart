@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import '../app_controller.dart';
 import '../models.dart';
+import 'budget_dialog.dart';
 import 'dialogs.dart';
 import 'task_card.dart';
 import 'task_form_dialog.dart';
@@ -75,6 +76,12 @@ class HomeScreen extends StatelessWidget {
             icon: const Icon(Icons.menu),
             onSelected: (v) {
               switch (v) {
+                case 'budget':
+                  showDialog<void>(
+                    context: context,
+                    builder: (ctx) => const BudgetDialog(),
+                  );
+                  break;
                 case 'currencies':
                   showDialog<void>(
                     context: context,
@@ -96,6 +103,13 @@ class HomeScreen extends StatelessWidget {
               }
             },
             itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                  value: 'budget',
+                  child: Row(children: [
+                    Icon(Icons.account_balance_wallet),
+                    SizedBox(width: 8),
+                    Text('Бюджет'),
+                  ])),
               const PopupMenuItem(
                   value: 'currencies',
                   child: Row(children: [

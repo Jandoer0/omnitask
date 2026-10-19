@@ -49,6 +49,7 @@ void main() {
     addTearDown(() => dir.deleteSync(recursive: true));
 
     final controller = await pumpHome(tester, dir);
+    addTearDown(controller.closeVault); // до удаления папки (LIFO)
 
     // Доска «Личное» в шапке, группы списков на доске.
     expect(find.text('Личное'), findsOneWidget);
@@ -84,6 +85,7 @@ void main() {
     addTearDown(() => dir.deleteSync(recursive: true));
 
     final controller = await pumpHome(tester, dir);
+    addTearDown(controller.closeVault); // до удаления папки (LIFO)
     controller.createTask(VaultTask(title: 'Свайп-задача'));
     await tester.pumpAndSettle();
 
@@ -105,6 +107,7 @@ void main() {
     addTearDown(() => dir.deleteSync(recursive: true));
 
     final controller = await pumpHome(tester, dir);
+    addTearDown(controller.closeVault); // до удаления папки (LIFO)
     controller.createTask(VaultTask(title: 'Удаляемая'));
     await tester.pumpAndSettle();
 

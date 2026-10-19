@@ -512,10 +512,28 @@ class _CurrencyManagerDialogState extends State<CurrencyManagerDialog> {
     final c = context.read<AppController>();
     final currencies = c.currencies;
 
+    void move(int from, int to) {
+      if (to < 0 || to >= currencies.length) return;
+      final ids = [for (final x in currencies) x.id!];
+      final t = ids.removeAt(from);
+      ids.insert(to, t);
+      c.reorderCurrencies(ids);
+      _reload();
+    }
+
     return SimpleDialog(
       title: const Text('Валюты'),
       contentPadding: const EdgeInsets.only(top: 8),
       children: [
+        if (currencies.isNotEmpty)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: Text(
+              'Первая валюта в списке — валюта по умолчанию '
+              '(и базовая для бюджета).',
+              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+            ),
+          ),
         for (final cur in currencies)
           ListTile(
             leading: SizedBox(
@@ -533,6 +551,21 @@ class _CurrencyManagerDialogState extends State<CurrencyManagerDialog> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => move(currencies.indexOf(cur),
+                          currencies.indexOf(cur) - 1),
+                      child: const Icon(Icons.arrow_upward, size: 14),
+                    ),
+                    InkWell(
+                      onTap: () => move(currencies.indexOf(cur),
+                          currencies.indexOf(cur) + 1),
+                      child: const Icon(Icons.arrow_downward, size: 14),
+                    ),
+                  ],
+                ),
                 IconButton(
                   icon: const Icon(Icons.edit, size: 18),
                   onPressed: () => showDialog<void>(
